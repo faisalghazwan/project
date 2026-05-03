@@ -119,3 +119,23 @@ export async function finishSession(formData: FormData) {
   revalidatePath(`/sessions/${sessionId}`);
   revalidatePath("/");
 }
+
+const notesSchema = z.object({
+  sessionId: z.coerce.number().int().positive(),
+  notes: z.string().max(2000),
+});
+
+export async function updateNotes(formData: FormData) {
+  const { sessionId, notes } = notesSchema.parse({
+    sessionId: formData.get("sessionId"),
+    notes: formData.get("notes") ?? "",
+  });
+
+  const trimmed = notes.trim();
+  db.update(sessions)
+    .set({ notes: trimmed === "" ? null : trimmed })
+    .where(eq(sessions.id, sessionId))
+    .run();
+
+  revalidatePath(`/sessions/${sessionId}`);
+}
