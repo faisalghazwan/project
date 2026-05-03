@@ -15,6 +15,104 @@ export function listSessions() {
   return db.select().from(sessions).orderBy(desc(sessions.startedAt)).all();
 }
 
+export type SessionWithStats = {
+  id: number;
+  startedAt: Date;
+  finishedAt: Date | null;
+  exerciseCount: number;
+  setCount: number;
+  volume: number;
+};
+
+export function listSessionsWithStats(): SessionWithStats[] {
+  const all = db
+    .select()
+    .from(sessions)
+    .orderBy(desc(sessions.startedAt))
+    .all();
+
+  const stats = db
+    .select({
+      sessionId: sessionExercises.sessionId,
+      sessionExerciseId: sessionExercises.id,
+      weight: sets.weight,
+      reps: sets.reps,
+    })
+    .from(sessionExercises)
+    .leftJoin(sets, eq(sets.sessionExerciseId, sessionExercises.id))
+    .all();
+
+  const bySession = new Map<
+    number,
+    { exercises: Set<number>; setCount: number; volume: number }
+  >();
+  for (const r of stats) {
+    const entry = bySession.get(r.sessionId) ?? {
+      exercises: new Set<number>(),
+      setCount: 0,
+      volume: 0,
+    };
+    entry.exercises.add(r.sessionExerciseId);
+    if (r.weight != null && r.reps != null) {
+      entry.setCount++;
+      entry.volume += r.weight * r.reps;
+    }
+    bySession.set(r.sessionId, entry);
+  }
+
+  return all.map((s) => {
+    const e = bySession.get(s.id);
+    return {
+      id: s.id,
+      startedAt: s.startedAt,
+      finishedAt: s.finishedAt,
+      exerciseCount: e?.exercises.size ?? 0,
+      setCount: e?.setCount ?? 0,
+      volume: e?.volume ?? 0,
+    };
+  });
+}
+
+export type LastSetForExercise = {
+  weight: number;
+  reps: number;
+  rpe: number | null;
+  startedAt: Date;
+};
+
+export function getLastSetForExercise(
+  exerciseId: number,
+  beforeSessionId: number,
+): LastSetForExercise | undefined {
+  const row = db
+    .select({
+      weight: sets.weight,
+      reps: sets.reps,
+      rpe: sets.rpe,
+      startedAt: sessions.startedAt,
+      sessionId: sessions.id,
+    })
+    .from(sets)
+    .innerJoin(
+      sessionExercises,
+      eq(sets.sessionExerciseId, sessionExercises.id),
+    )
+    .innerJoin(sessions, eq(sessionExercises.sessionId, sessions.id))
+    .where(eq(sessionExercises.exerciseId, exerciseId))
+    .orderBy(desc(sessions.startedAt), desc(sets.position))
+    .all()
+    .find((r) => r.sessionId !== beforeSessionId);
+
+  return row
+    ? {
+        weight: row.weight,
+        reps: row.reps,
+        rpe: row.rpe,
+        startedAt: row.startedAt,
+      }
+    : undefined;
+}
+
 export function getSession(id: number) {
   return db.select().from(sessions).where(eq(sessions.id, id)).get();
 }
@@ -135,6 +233,58 @@ export type ExerciseSetHistory = {
 
 export function listPrograms() {
   return db.select().from(programs).orderBy(desc(programs.createdAt)).all();
+}
+
+export type ProgramWithCounts = {
+  id: number;
+  name: string;
+  createdAt: Date;
+  dayCount: number;
+  exerciseCount: number;
+};
+
+export function listProgramsWithCounts(): ProgramWithCounts[] {
+  const all = db
+    .select()
+    .from(programs)
+    .orderBy(desc(programs.createdAt))
+    .all();
+
+  const dayRows = db
+    .select({
+      programId: programDays.programId,
+      dayId: programDays.id,
+    })
+    .from(programDays)
+    .all();
+
+  const exerciseRows = db
+    .select({
+      dayId: programDayExercises.programDayId,
+    })
+    .from(programDayExercises)
+    .all();
+
+  const exByDay = new Map<number, number>();
+  for (const r of exerciseRows) {
+    exByDay.set(r.dayId, (exByDay.get(r.dayId) ?? 0) + 1);
+  }
+
+  const stats = new Map<number, { days: number; exercises: number }>();
+  for (const r of dayRows) {
+    const s = stats.get(r.programId) ?? { days: 0, exercises: 0 };
+    s.days += 1;
+    s.exercises += exByDay.get(r.dayId) ?? 0;
+    stats.set(r.programId, s);
+  }
+
+  return all.map((p) => ({
+    id: p.id,
+    name: p.name,
+    createdAt: p.createdAt,
+    dayCount: stats.get(p.id)?.days ?? 0,
+    exerciseCount: stats.get(p.id)?.exercises ?? 0,
+  }));
 }
 
 export function getProgram(id: number) {

@@ -11,20 +11,21 @@ import {
 } from "recharts";
 
 export type ChartPoint = {
-  date: number; // unix ms
+  date: number;
   e1rm: number;
 };
 
 export function HistoryChart({ data }: { data: ChartPoint[] }) {
   return (
-    <div className="h-56 w-full">
+    <div className="h-64 w-full">
       <ResponsiveContainer>
         <LineChart
           data={data}
-          margin={{ top: 8, right: 8, left: 0, bottom: 8 }}
+          margin={{ top: 12, right: 12, left: 0, bottom: 4 }}
         >
           <CartesianGrid
             strokeDasharray="2 4"
+            vertical={false}
             className="stroke-zinc-200 dark:stroke-zinc-800"
           />
           <XAxis
@@ -38,29 +39,46 @@ export function HistoryChart({ data }: { data: ChartPoint[] }) {
               })
             }
             stroke="currentColor"
-            className="text-xs text-zinc-500"
+            tickLine={false}
+            axisLine={false}
+            className="text-[10px] text-zinc-400"
+            tick={{ fill: "currentColor" }}
           />
           <YAxis
             stroke="currentColor"
-            className="text-xs text-zinc-500"
+            tickLine={false}
+            axisLine={false}
+            className="text-[10px] text-zinc-400"
+            tick={{ fill: "currentColor" }}
             tickFormatter={(v) => `${Math.round(v)}`}
-            width={36}
+            width={32}
           />
           <Tooltip
+            cursor={{ stroke: "currentColor", strokeOpacity: 0.15 }}
             contentStyle={{
               fontSize: 12,
-              borderRadius: 4,
-              border: "1px solid #d4d4d8",
+              borderRadius: 8,
+              border: "1px solid rgba(0,0,0,0.08)",
+              padding: "6px 10px",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
             }}
-            labelFormatter={(t) => new Date(t).toLocaleDateString()}
+            labelFormatter={(t) =>
+              new Date(t).toLocaleDateString(undefined, {
+                weekday: "short",
+                month: "short",
+                day: "numeric",
+              })
+            }
             formatter={(v) => [`${Number(v).toFixed(1)} kg`, "e1RM"]}
           />
           <Line
             type="monotone"
             dataKey="e1rm"
-            stroke="#18181b"
+            stroke="currentColor"
             strokeWidth={2}
-            dot={{ r: 3 }}
+            dot={{ r: 3, strokeWidth: 0, fill: "currentColor" }}
+            activeDot={{ r: 5, strokeWidth: 0, fill: "currentColor" }}
+            className="text-zinc-900 dark:text-zinc-50"
           />
         </LineChart>
       </ResponsiveContainer>
