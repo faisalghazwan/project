@@ -15,6 +15,10 @@ export function listExercises() {
   return db.select().from(exercises).orderBy(asc(exercises.name)).all();
 }
 
+export function getExercise(id: number) {
+  return db.select().from(exercises).where(eq(exercises.id, id)).get();
+}
+
 export type SessionExerciseWithSets = {
   id: number;
   position: number;
@@ -61,4 +65,32 @@ export function getSessionExercises(
       .orderBy(asc(sets.position))
       .all(),
   }));
+}
+
+export type ExerciseSetHistory = {
+  sessionId: number;
+  startedAt: Date;
+  weight: number;
+  reps: number;
+  rpe: number | null;
+};
+
+export function getExerciseHistory(exerciseId: number): ExerciseSetHistory[] {
+  return db
+    .select({
+      sessionId: sessions.id,
+      startedAt: sessions.startedAt,
+      weight: sets.weight,
+      reps: sets.reps,
+      rpe: sets.rpe,
+    })
+    .from(sets)
+    .innerJoin(
+      sessionExercises,
+      eq(sets.sessionExerciseId, sessionExercises.id),
+    )
+    .innerJoin(sessions, eq(sessionExercises.sessionId, sessions.id))
+    .where(eq(sessionExercises.exerciseId, exerciseId))
+    .orderBy(asc(sessions.startedAt))
+    .all();
 }
