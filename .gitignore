@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.template
 
 # vercel
 .vercel
@@ -39,3 +40,34 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# build/tmp output
+dist
+tmp
+
+# IDE
+.idea
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# OS files
+Thumbs.db
+
+# testing
+test-output
+
+# Firebase service account keys
+*-firebase-adminsdk-*.json
+
+# Prisma
+prisma/*.db
+
+# Certificates / keys
+*.p8
+*.p12
+
+# Local MCP config
+.mcp.json
+.memory
+CLAUDE.md
