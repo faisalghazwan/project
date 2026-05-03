@@ -120,6 +120,39 @@ export async function finishSession(formData: FormData) {
   revalidatePath("/");
 }
 
+const removeSeSchema = z.object({
+  sessionId: z.coerce.number().int().positive(),
+  sessionExerciseId: z.coerce.number().int().positive(),
+});
+
+export async function removeSessionExercise(formData: FormData) {
+  const { sessionId, sessionExerciseId } = removeSeSchema.parse({
+    sessionId: formData.get("sessionId"),
+    sessionExerciseId: formData.get("sessionExerciseId"),
+  });
+
+  db.delete(sessionExercises)
+    .where(eq(sessionExercises.id, sessionExerciseId))
+    .run();
+
+  revalidatePath(`/sessions/${sessionId}`);
+}
+
+const deleteSessionSchema = z.object({
+  sessionId: z.coerce.number().int().positive(),
+});
+
+export async function deleteSession(formData: FormData) {
+  const { sessionId } = deleteSessionSchema.parse({
+    sessionId: formData.get("sessionId"),
+  });
+
+  db.delete(sessions).where(eq(sessions.id, sessionId)).run();
+
+  revalidatePath("/");
+  redirect("/");
+}
+
 const notesSchema = z.object({
   sessionId: z.coerce.number().int().positive(),
   notes: z.string().max(2000),
