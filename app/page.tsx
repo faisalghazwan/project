@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { listSessions } from "@/db/queries";
+import { getRecentVolume, listSessions } from "@/db/queries";
 import { startSession } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -12,8 +12,17 @@ function fmtDate(d: Date) {
   });
 }
 
+function fmtVolume(v: number) {
+  if (v >= 1000) return `${(v / 1000).toFixed(1)}t`;
+  return `${Math.round(v)}kg`;
+}
+
 export default function Home() {
   const all = listSessions();
+  const weeks = getRecentVolume(8);
+  const max = Math.max(1, ...weeks.map((w) => w.volume));
+  const thisWeek = weeks[weeks.length - 1];
+  const lastWeek = weeks[weeks.length - 2];
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-10">
@@ -36,6 +45,36 @@ export default function Home() {
           </form>
         </div>
       </header>
+
+      {thisWeek && thisWeek.volume + (lastWeek?.volume ?? 0) > 0 && (
+        <section className="mt-8 rounded border border-zinc-200 p-4 dark:border-zinc-800">
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-xs uppercase tracking-wide text-zinc-500">
+              this week
+            </h2>
+            <span className="text-sm tabular-nums">
+              {fmtVolume(thisWeek.volume)}
+              {lastWeek && lastWeek.volume > 0 && (
+                <span className="ml-2 text-xs text-zinc-500">
+                  vs {fmtVolume(lastWeek.volume)} last
+                </span>
+              )}
+            </span>
+          </div>
+          <div className="mt-3 flex h-10 items-end gap-1">
+            {weeks.map((w) => (
+              <div
+                key={w.weekStart.getTime()}
+                title={`${w.weekStart.toLocaleDateString()}: ${fmtVolume(w.volume)}`}
+                className="flex-1 rounded-sm bg-zinc-200 dark:bg-zinc-800"
+                style={{
+                  height: `${Math.max(4, (w.volume / max) * 100)}%`,
+                }}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       <ul className="mt-8 divide-y divide-zinc-200 dark:divide-zinc-800">
         {all.length === 0 && (
