@@ -10,6 +10,7 @@ import {
   addSet,
   deleteSet,
   finishSession,
+  updateNotes,
 } from "@/app/actions";
 
 export const dynamic = "force-dynamic";
@@ -155,6 +156,37 @@ export default async function SessionPage({
             )}
           </article>
         ))}
+      </section>
+
+      <section className="mt-10 border-t border-zinc-200 pt-6 dark:border-zinc-800">
+        <form action={updateNotes}>
+          <input type="hidden" name="sessionId" value={sessionId} />
+          <label
+            htmlFor="notes"
+            className="text-xs uppercase tracking-wide text-zinc-500"
+          >
+            notes
+          </label>
+          <textarea
+            id="notes"
+            name="notes"
+            defaultValue={session.notes ?? ""}
+            rows={3}
+            placeholder="how did it feel?"
+            disabled={session.finishedAt != null}
+            className="mt-1 w-full resize-y rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900 disabled:opacity-60"
+          />
+          {!session.finishedAt && (
+            <div className="mt-2 flex justify-end">
+              <button
+                type="submit"
+                className="rounded border border-zinc-300 px-3 py-1 text-xs hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
+              >
+                save notes
+              </button>
+            </div>
+          )}
+        </form>
       </section>
 
       {!session.finishedAt && remaining.length > 0 && (
