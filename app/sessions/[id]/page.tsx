@@ -10,8 +10,10 @@ import {
   addSet,
   deleteSet,
   finishSession,
+  removeSessionExercise,
   updateNotes,
 } from "@/app/actions";
+import { DeleteSessionButton } from "./delete-session";
 
 export const dynamic = "force-dynamic";
 
@@ -54,23 +56,49 @@ export default async function SessionPage({
             {session.finishedAt ? "finished" : "in progress"}
           </p>
         </div>
-        {!session.finishedAt && items.length > 0 && (
-          <form action={finishSession}>
-            <input type="hidden" name="sessionId" value={sessionId} />
-            <button
-              type="submit"
-              className="rounded border border-zinc-300 px-3 py-1.5 text-sm hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
-            >
-              finish
-            </button>
-          </form>
-        )}
+        <div className="flex items-center gap-3">
+          <DeleteSessionButton sessionId={sessionId} />
+          {!session.finishedAt && items.length > 0 && (
+            <form action={finishSession}>
+              <input type="hidden" name="sessionId" value={sessionId} />
+              <button
+                type="submit"
+                className="rounded border border-zinc-300 px-3 py-1.5 text-sm hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
+              >
+                finish
+              </button>
+            </form>
+          )}
+        </div>
       </header>
 
       <section className="mt-8 space-y-8">
         {items.map((item) => (
           <article key={item.id}>
-            <h2 className="text-base font-medium">{item.exercise.name}</h2>
+            <div className="flex items-baseline justify-between">
+              <h2 className="text-base font-medium">{item.exercise.name}</h2>
+              {!session.finishedAt && (
+                <form action={removeSessionExercise}>
+                  <input
+                    type="hidden"
+                    name="sessionId"
+                    value={sessionId}
+                  />
+                  <input
+                    type="hidden"
+                    name="sessionExerciseId"
+                    value={item.id}
+                  />
+                  <button
+                    type="submit"
+                    className="text-xs text-zinc-400 hover:text-red-600"
+                    aria-label="remove exercise"
+                  >
+                    remove
+                  </button>
+                </form>
+              )}
+            </div>
 
             {item.sets.length > 0 && (
               <ol className="mt-2 space-y-1 text-sm">
