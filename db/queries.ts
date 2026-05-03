@@ -67,6 +67,56 @@ export function getSessionExercises(
   }));
 }
 
+export type WeekVolume = {
+  weekStart: Date; // local Monday
+  volume: number;
+};
+
+function startOfWeek(d: Date): Date {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  // 0=Sun, 1=Mon ... shift so Mon = 0
+  const day = (x.getDay() + 6) % 7;
+  x.setDate(x.getDate() - day);
+  return x;
+}
+
+export function getRecentVolume(weeks: number): WeekVolume[] {
+  const now = new Date();
+  const earliest = startOfWeek(now);
+  earliest.setDate(earliest.getDate() - 7 * (weeks - 1));
+
+  const rows = db
+    .select({
+      startedAt: sessions.startedAt,
+      weight: sets.weight,
+      reps: sets.reps,
+    })
+    .from(sets)
+    .innerJoin(
+      sessionExercises,
+      eq(sets.sessionExerciseId, sessionExercises.id),
+    )
+    .innerJoin(sessions, eq(sessionExercises.sessionId, sessions.id))
+    .all()
+    .filter((r) => r.startedAt >= earliest);
+
+  const buckets = new Map<number, number>();
+  for (let i = 0; i < weeks; i++) {
+    const w = new Date(earliest);
+    w.setDate(w.getDate() + i * 7);
+    buckets.set(w.getTime(), 0);
+  }
+  for (const r of rows) {
+    const wk = startOfWeek(r.startedAt).getTime();
+    buckets.set(wk, (buckets.get(wk) ?? 0) + r.weight * r.reps);
+  }
+
+  return [...buckets.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([t, v]) => ({ weekStart: new Date(t), volume: v }));
+}
+
 export type ExerciseSetHistory = {
   sessionId: number;
   startedAt: Date;
