@@ -30,6 +30,12 @@ export default function Home() {
         <h1 className="text-2xl font-semibold">reps</h1>
         <div className="flex items-center gap-3">
           <Link
+            href="/programs"
+            className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+          >
+            programs
+          </Link>
+          <Link
             href="/exercises"
             className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
           >
