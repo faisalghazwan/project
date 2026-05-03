@@ -71,3 +71,9 @@ prisma/*.db
 .mcp.json
 .memory
 CLAUDE.md
+
+# local sqlite
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
