@@ -5,7 +5,15 @@ import { redirect } from "next/navigation";
 import { eq, max } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { sessionExercises, sessions, sets } from "@/db/schema";
+import { getProgramDay, getProgramDayExercises } from "@/db/queries";
+import {
+  programDayExercises,
+  programDays,
+  programs,
+  sessionExercises,
+  sessions,
+  sets,
+} from "@/db/schema";
 
 export async function startSession() {
   const [row] = db
@@ -171,4 +179,177 @@ export async function updateNotes(formData: FormData) {
     .run();
 
   revalidatePath(`/sessions/${sessionId}`);
+}
+
+const createProgramSchema = z.object({
+  name: z.string().min(1).max(60),
+});
+
+export async function createProgram(formData: FormData) {
+  const { name } = createProgramSchema.parse({
+    name: formData.get("name"),
+  });
+
+  const [row] = db
+    .insert(programs)
+    .values({ name: name.trim(), createdAt: new Date() })
+    .returning({ id: programs.id })
+    .all();
+
+  revalidatePath("/programs");
+  redirect(`/programs/${row.id}`);
+}
+
+const deleteProgramSchema = z.object({
+  programId: z.coerce.number().int().positive(),
+});
+
+export async function deleteProgram(formData: FormData) {
+  const { programId } = deleteProgramSchema.parse({
+    programId: formData.get("programId"),
+  });
+
+  db.delete(programs).where(eq(programs.id, programId)).run();
+  revalidatePath("/programs");
+  redirect("/programs");
+}
+
+const addDaySchema = z.object({
+  programId: z.coerce.number().int().positive(),
+  name: z.string().min(1).max(40),
+});
+
+export async function addProgramDay(formData: FormData) {
+  const { programId, name } = addDaySchema.parse({
+    programId: formData.get("programId"),
+    name: formData.get("name"),
+  });
+
+  const [{ next }] = db
+    .select({ next: max(programDays.position) })
+    .from(programDays)
+    .where(eq(programDays.programId, programId))
+    .all();
+
+  db.insert(programDays)
+    .values({
+      programId,
+      name: name.trim(),
+      position: (next ?? 0) + 1,
+    })
+    .run();
+
+  revalidatePath(`/programs/${programId}`);
+}
+
+const removeDaySchema = z.object({
+  programId: z.coerce.number().int().positive(),
+  dayId: z.coerce.number().int().positive(),
+});
+
+export async function removeProgramDay(formData: FormData) {
+  const { programId, dayId } = removeDaySchema.parse({
+    programId: formData.get("programId"),
+    dayId: formData.get("dayId"),
+  });
+
+  db.delete(programDays).where(eq(programDays.id, dayId)).run();
+  revalidatePath(`/programs/${programId}`);
+}
+
+const addDayExerciseSchema = z.object({
+  programId: z.coerce.number().int().positive(),
+  dayId: z.coerce.number().int().positive(),
+  exerciseId: z.coerce.number().int().positive(),
+  targetSets: z.preprocess(
+    (v) => (v === "" || v == null ? undefined : v),
+    z.coerce.number().int().min(1).max(20).optional(),
+  ),
+  targetReps: z.preprocess(
+    (v) => (v === "" || v == null ? undefined : v),
+    z.coerce.number().int().min(1).max(50).optional(),
+  ),
+});
+
+export async function addDayExercise(formData: FormData) {
+  const { programId, dayId, exerciseId, targetSets, targetReps } =
+    addDayExerciseSchema.parse({
+      programId: formData.get("programId"),
+      dayId: formData.get("dayId"),
+      exerciseId: formData.get("exerciseId"),
+      targetSets: formData.get("targetSets"),
+      targetReps: formData.get("targetReps"),
+    });
+
+  const [{ next }] = db
+    .select({ next: max(programDayExercises.position) })
+    .from(programDayExercises)
+    .where(eq(programDayExercises.programDayId, dayId))
+    .all();
+
+  db.insert(programDayExercises)
+    .values({
+      programDayId: dayId,
+      exerciseId,
+      position: (next ?? 0) + 1,
+      targetSets: targetSets ?? null,
+      targetReps: targetReps ?? null,
+    })
+    .run();
+
+  revalidatePath(`/programs/${programId}`);
+}
+
+const removeDayExerciseSchema = z.object({
+  programId: z.coerce.number().int().positive(),
+  pdeId: z.coerce.number().int().positive(),
+});
+
+export async function removeDayExercise(formData: FormData) {
+  const { programId, pdeId } = removeDayExerciseSchema.parse({
+    programId: formData.get("programId"),
+    pdeId: formData.get("pdeId"),
+  });
+
+  db.delete(programDayExercises)
+    .where(eq(programDayExercises.id, pdeId))
+    .run();
+
+  revalidatePath(`/programs/${programId}`);
+}
+
+const startFromDaySchema = z.object({
+  dayId: z.coerce.number().int().positive(),
+});
+
+export async function startSessionFromProgramDay(formData: FormData) {
+  const { dayId } = startFromDaySchema.parse({
+    dayId: formData.get("dayId"),
+  });
+
+  const day = getProgramDay(dayId);
+  if (!day) throw new Error("program day not found");
+
+  const dayExercises = getProgramDayExercises(dayId);
+
+  const [session] = db
+    .insert(sessions)
+    .values({ startedAt: new Date() })
+    .returning({ id: sessions.id })
+    .all();
+
+  if (dayExercises.length > 0) {
+    db.insert(sessionExercises)
+      .values(
+        dayExercises.map((d) => ({
+          sessionId: session.id,
+          exerciseId: d.exerciseId,
+          position: d.position,
+        })),
+      )
+      .run();
+  }
+
+  revalidatePath("/");
+  redirect(`/sessions/${session.id}`);
 }
