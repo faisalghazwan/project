@@ -8,12 +8,13 @@ import {
 import {
   addExercise,
   addSet,
+  deleteSession,
   deleteSet,
   finishSession,
   removeSessionExercise,
   updateNotes,
 } from "@/app/actions";
-import { DeleteSessionButton } from "./delete-session";
+import { ConfirmButton } from "@/app/programs/confirm-button";
 
 export const dynamic = "force-dynamic";
 
@@ -57,7 +58,12 @@ export default async function SessionPage({
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <DeleteSessionButton sessionId={sessionId} />
+          <ConfirmButton
+            action={deleteSession}
+            confirmMessage="delete this session?"
+            inputs={[{ name: "sessionId", value: String(sessionId) }]}
+            label="delete"
+          />
           {!session.finishedAt && items.length > 0 && (
             <form action={finishSession}>
               <input type="hidden" name="sessionId" value={sessionId} />
