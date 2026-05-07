@@ -8,9 +8,8 @@ export function ServiceWorkerRegister() {
     if (typeof window === "undefined") return;
     if (!("serviceWorker" in navigator)) return;
 
-    navigator.serviceWorker.register("/sw.js").catch(() => {
-      // ignore: sw failures shouldn't break the app
-    });
+    const base = process.env.NEXT_PUBLIC_BASE_PATH || "";
+    navigator.serviceWorker.register(`${base}/sw.js`).catch(() => {});
   }, []);
 
   return null;

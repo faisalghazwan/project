@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-
-type Exercise = { id: number; name: string; category: string | null };
+import type { Exercise } from "@/lib/store";
 
 export function ExerciseList({ exercises }: { exercises: Exercise[] }) {
   const [q, setQ] = useState("");
@@ -19,7 +18,11 @@ export function ExerciseList({ exercises }: { exercises: Exercise[] }) {
       if (!map.has(cat)) map.set(cat, []);
       map.get(cat)!.push(e);
     }
-    return [...map.entries()];
+    // sort categories by canonical order if known
+    const order = ["push", "pull", "legs", "core", "other"];
+    return [...map.entries()].sort(
+      (a, b) => order.indexOf(a[0]) - order.indexOf(b[0]),
+    );
   }, [exercises, q]);
 
   const total = groups.reduce((n, [, list]) => n + list.length, 0);
@@ -31,7 +34,7 @@ export function ExerciseList({ exercises }: { exercises: Exercise[] }) {
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          strokeWidth="1.8"
+          strokeWidth="1.7"
           strokeLinecap="round"
           strokeLinejoin="round"
           className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400"
@@ -42,7 +45,7 @@ export function ExerciseList({ exercises }: { exercises: Exercise[] }) {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="search exercises"
+          placeholder="search lifts"
           className="h-11 w-full rounded-lg border border-zinc-200 bg-white pl-9 pr-3 text-sm placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:focus:border-zinc-600"
         />
         {q && (
@@ -50,7 +53,7 @@ export function ExerciseList({ exercises }: { exercises: Exercise[] }) {
             type="button"
             aria-label="clear"
             onClick={() => setQ("")}
-            className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800"
+            className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 active:scale-95 dark:hover:bg-zinc-800"
           >
             <svg
               viewBox="0 0 24 24"
@@ -68,17 +71,19 @@ export function ExerciseList({ exercises }: { exercises: Exercise[] }) {
       </div>
 
       {total === 0 ? (
-        <p className="mt-10 text-center text-sm text-zinc-500">
-          nothing matches “{q}”
-        </p>
+        <div className="mt-10 rounded-2xl border border-dashed border-zinc-300 px-6 py-12 text-center dark:border-zinc-800">
+          <p className="text-sm text-zinc-500">
+            no matches for &ldquo;{q}&rdquo;
+          </p>
+        </div>
       ) : (
         <div className="mt-6 space-y-5">
           {groups.map(([cat, list]) => (
             <section key={cat}>
-              <h2 className="px-1 text-[11px] uppercase tracking-wider text-zinc-500">
+              <h2 className="px-1 text-[10.5px] font-medium uppercase tracking-wider text-zinc-500">
                 {cat}
               </h2>
-              <ul className="mt-1.5 overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+              <ul className="mt-1.5 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-none">
                 {list.map((e, i) => (
                   <li
                     key={e.id}
@@ -89,11 +94,13 @@ export function ExerciseList({ exercises }: { exercises: Exercise[] }) {
                     }
                   >
                     <Link
-                      href={`/exercises/${e.id}`}
-                      className="flex items-center justify-between px-4 py-3 text-sm hover:bg-zinc-50 active:bg-zinc-100 dark:hover:bg-zinc-800/60 dark:active:bg-zinc-800"
+                      href={`/exercise?id=${e.id}`}
+                      className="group flex items-center justify-between px-4 py-3 text-sm transition-colors hover:bg-zinc-50 active:bg-zinc-100 dark:hover:bg-zinc-800/60 dark:active:bg-zinc-800"
                     >
                       <span>{e.name}</span>
-                      <span className="text-zinc-300 dark:text-zinc-600">→</span>
+                      <span className="text-zinc-300 transition-transform group-hover:translate-x-0.5 dark:text-zinc-600">
+                        →
+                      </span>
                     </Link>
                   </li>
                 ))}

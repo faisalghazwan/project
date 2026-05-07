@@ -1,25 +1,51 @@
 @import "tailwindcss";
 
-@theme {
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
+@theme inline {
+  --font-sans: var(--font-sans), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, "SF Mono", Menlo, monospace;
 }
 
-html,
-body {
-  -webkit-tap-highlight-color: transparent;
-  text-size-adjust: 100%;
+@layer base {
+  html,
+  body {
+    -webkit-tap-highlight-color: transparent;
+    text-size-adjust: 100%;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* hide number-input spinners */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+
+  /* keep font-feature settings consistent */
+  body {
+    font-feature-settings: "ss01", "cv11";
+  }
+
+  ::selection {
+    background-color: rgb(24 24 27);
+    color: rgb(250 250 250);
+  }
+  @media (prefers-color-scheme: dark) {
+    ::selection {
+      background-color: rgb(228 228 231);
+      color: rgb(9 9 11);
+    }
+  }
 }
 
-input[type="number"]::-webkit-outer-spin-button,
-input[type="number"]::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-input[type="number"] {
-  -moz-appearance: textfield;
-  appearance: textfield;
+@layer utilities {
+  .nums {
+    font-variant-numeric: tabular-nums;
+  }
 }
 
 @media (display-mode: standalone) {

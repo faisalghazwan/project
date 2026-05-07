@@ -1,76 +1,60 @@
-// reps service worker
-// strategy:
-//   - static (/_next/static/*, /icon.svg, /manifest.webmanifest): cache-first
-//   - html navigations: network, fall back to cache, then to /offline
-//   - everything else (server actions, RSC): network only
-const VERSION = "v1";
-const STATIC = `reps-static-${VERSION}`;
-const PAGES = `reps-pages-${VERSION}`;
-const SHELL = ["/offline", "/manifest.webmanifest", "/icon.svg"];
+// reps service worker (static export)
+const VERSION = "v2";
+const CACHE = `reps-${VERSION}`;
+const SCOPE = new URL("./", self.location.href).pathname;
+const SHELL = [
+  SCOPE,
+  `${SCOPE}offline/`,
+  `${SCOPE}manifest.webmanifest`,
+  `${SCOPE}icon.svg`,
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(PAGES).then((cache) => cache.addAll(SHELL)),
+    (async () => {
+      const cache = await caches.open(CACHE);
+      await Promise.allSettled(SHELL.map((u) => cache.add(u)));
+    })(),
   );
   self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys
-          .filter((k) => k !== STATIC && k !== PAGES)
-          .map((k) => caches.delete(k)),
-      ),
-    ),
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(
+        keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)),
+      );
+      await self.clients.claim();
+    })(),
   );
-  self.clients.claim();
 });
-
-function isStatic(url) {
-  return (
-    url.pathname.startsWith("/_next/static/") ||
-    url.pathname === "/icon.svg" ||
-    url.pathname === "/manifest.webmanifest"
-  );
-}
 
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
-
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
-  if (isStatic(url)) {
-    event.respondWith(
-      caches.open(STATIC).then(async (cache) => {
+  event.respondWith(
+    (async () => {
+      const cache = await caches.open(CACHE);
+      try {
+        const res = await fetch(req);
+        if (res.ok && (req.mode === "navigate" || url.pathname.startsWith(`${SCOPE}_next/`))) {
+          cache.put(req, res.clone());
+        }
+        return res;
+      } catch {
         const hit = await cache.match(req);
         if (hit) return hit;
-        const res = await fetch(req);
-        if (res.ok) cache.put(req, res.clone());
-        return res;
-      }),
-    );
-    return;
-  }
-
-  const accept = req.headers.get("accept") ?? "";
-  if (req.mode === "navigate" || accept.includes("text/html")) {
-    event.respondWith(
-      (async () => {
-        try {
-          const res = await fetch(req);
-          const cache = await caches.open(PAGES);
-          if (res.ok) cache.put(req, res.clone());
-          return res;
-        } catch {
-          const cache = await caches.open(PAGES);
-          const cached = await cache.match(req);
-          return cached ?? cache.match("/offline");
+        if (req.mode === "navigate") {
+          const offline = await cache.match(`${SCOPE}offline/`);
+          if (offline) return offline;
         }
-      })(),
-    );
-  }
+        throw new Error("offline");
+      }
+    })(),
+  );
 });
